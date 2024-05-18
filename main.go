@@ -6,33 +6,25 @@ import (
 )
 
 func main() {
+	const filepathRoot = "."
 	const port = "8080"
+
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(".")))
-	mux.Handle("/logo", http.FileServer(http.Dir("/assets")))
-	mux.HandleFunc("/app", app)
-	mux.HandleFunc("/app/assets", assets)
-	mux.HandleFunc("/healthz", healthzHandler)
-	server := &http.Server{
+	mux.Handle("/app/*", http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	mux.HandleFunc("/healthz", handlerReadiness)
+
+	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
-	log.Printf("Serving on port: %s \n", port)
-	log.Fatal(server.ListenAndServe())
 
+	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
+	log.Fatal(srv.ListenAndServe())
 }
 
-func assets(w http.ResponseWriter, req *http.Request) {
+func handlerReadiness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	http.ServeFile(w, req, "./assets/index.html")
+	w.Write([]byte(http.StatusText(http.StatusOK)))
 }
-func app(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	http.ServeFile(w, req, "index.html")
-}
-func healthzHandler(w http.ResponseWriter, req *http.Request) {
-	ok := []byte("OK")
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(ok)
-}
+
