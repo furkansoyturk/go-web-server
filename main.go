@@ -1,11 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 )
+
+type Request struct {
+	Body string `json:"body"`
+}
 
 func main() {
 	apiConfig := ApiConfig{
@@ -18,6 +24,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /api/metrics", apiConfig.handlerMetrics)
 	mux.HandleFunc("/api/reset", apiConfig.handerReset)
+	mux.HandleFunc("POST /api/validate_chirp", validateLength)
 	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -32,6 +39,31 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(http.StatusText(http.StatusOK)))
+}
+func validateLength(w http.ResponseWriter, r *http.Request) {
+	var req Request
+	request, err := io.ReadAll(r.Body)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
+		return
+	}
+	defer r.Body.Close()
+	err = json.Unmarshal(request, &req)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
+		return
+	}
+	if len(req.Body) <= 140 {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Chirp is too long"})
+	}
+
 }
 
 func (apiConfig *ApiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
