@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Request struct {
@@ -51,6 +52,7 @@ func validateLength(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	err = json.Unmarshal(request, &req)
+	req = censorRequestBody(req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
@@ -58,7 +60,7 @@ func validateLength(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Body) <= 140 {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+		json.NewEncoder(w).Encode(map[string]string{"cleaned_body": req.Body})
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Chirp is too long"})
@@ -94,4 +96,22 @@ func (apiConfig *ApiConfig) handerReset(w http.ResponseWriter, r *http.Request) 
 	apiConfig.FileServerHits = 0
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hits reset to 0"))
+}
+
+func censorRequestBody(req Request) Request {
+	words := strings.Split(req.Body, " ")
+	cleanedReq := []string{}
+	for _, s := range words {
+		switch strings.ToLower(s) {
+		case "kerfuffle":
+			s = "****"
+		case "sharbert":
+			s = "****"
+		case "fornax":
+			s = "****"
+		}
+		cleanedReq = append(cleanedReq, s)
+	}
+	req.Body = strings.Join(cleanedReq, " ")
+	return req
 }
