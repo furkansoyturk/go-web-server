@@ -26,7 +26,7 @@ type IDAutoIncrement struct {
 
 // NewDB creates a new database connection
 // and creates the database file if it doesn't exist
-func newDB() (*DB, error) {
+func NewDB() (*DB, error) {
 
 	db := DB{
 		path: "db.json",
@@ -42,9 +42,18 @@ func newDB() (*DB, error) {
 }
 
 // CreateChirp creates a new chirp and saves it to disk
-// func (db *DB) CreateChirp(body string) (Chirp, error) {
-//
-// }
+func (db *DB) save(body string) (Chirp, error) {
+
+	chirp := Chirp{
+		Id:   0,
+		Body: body,
+	}
+
+	os.WriteFile(db.path, []byte(body), 0644)
+	log.Println("writed successfully")
+	return chirp, nil
+}
+
 //
 // // GetChirps returns all chirps in the database
 // func (db *DB) GetChirps() ([]Chirp, error) {

@@ -18,8 +18,11 @@ func main() {
 	apiConfig := ApiConfig{
 		FileServerHits: 0,
 	}
+
 	const filepathRoot = "."
 	const port = "8080"
+
+	db, _ := NewDB()
 	mux := http.NewServeMux()
 	mux.Handle("/app/*", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
@@ -27,7 +30,7 @@ func main() {
 	mux.HandleFunc("/api/reset", apiConfig.handerReset)
 	mux.HandleFunc("POST /api/validate_chirp", validateLength)
 	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
-	mux.HandleFunc("POST /api/chirps", createChirps)
+	mux.HandleFunc("POST /api/chirps", db.createChirps)
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
@@ -117,6 +120,16 @@ func censorRequestBody(req Request) Request {
 	return req
 }
 
-func createChirps(w http.ResponseWriter, r *http.Request) {
-	newDB()
+func (db *DB) createChirps(w http.ResponseWriter, r *http.Request) {
+	var req Request
+	request, err := io.ReadAll(r.Body)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
+		return
+	}
+	defer r.Body.Close()
+	err = json.Unmarshal(request, &req)
+	db.save(req.Body)
 }
