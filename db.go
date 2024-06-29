@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -12,16 +14,13 @@ type Chirp struct {
 }
 
 type DB struct {
-	path string
-	mux  *sync.RWMutex
+	path  string
+	mux   *sync.RWMutex
+	index int
 }
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
-}
-
-type IDAutoIncrement struct {
-	Id int
 }
 
 // NewDB creates a new database connection
@@ -36,7 +35,16 @@ func NewDB() (*DB, error) {
 	if err != nil {
 		log.Fatal("err while initializing db connection...")
 	}
+	defer file.Close()
 	log.Printf("%v connected", file.Name())
+	data, err := os.ReadFile(file.Name())
+	if err != nil {
+		log.Panicf("failed reading data from file: %s", err)
+	}
+
+	var chirpMap DBStructure
+	json.Unmarshal(data, &chirpMap)
+	log.Printf("len of chirp list %v", len(chirpMap.Chirps))
 
 	return &db, nil
 }
@@ -45,11 +53,21 @@ func NewDB() (*DB, error) {
 func (db *DB) save(body string) (Chirp, error) {
 
 	chirp := Chirp{
-		Id:   0,
+		Id:   3,
 		Body: body,
 	}
 
-	os.WriteFile(db.path, []byte(body), 0644)
+	m := make(map[int]Chirp)
+
+	m[chirp.Id] = chirp
+
+	dbStructure := DBStructure{
+		Chirps: m,
+	}
+
+	data, _ := json.Marshal(dbStructure)
+
+	os.WriteFile(db.path, []byte(data), 0644)
 	log.Println("writed successfully")
 	return chirp, nil
 }

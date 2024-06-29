@@ -1,1 +1,20 @@
-I had something interesting for breakfast
+{
+    "chirps": {
+        "1": {
+            "id": 1,
+            "body": "I had something interesting for breakfast"
+        },
+        "2": {
+            "id": 2,
+            "body": "I had something interesting for breakfast"
+        },
+        "3": {
+            "id": 3,
+            "body": "I had something interesting for breakfast"
+        },
+        "4": {
+            "id": 4,
+            "body": "I had something interesting for breakfast"
+        }
+    }
+}
