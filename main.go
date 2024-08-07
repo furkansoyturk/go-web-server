@@ -30,7 +30,7 @@ func main() {
 	mux.HandleFunc("/api/reset", apiConfig.handerReset)
 	mux.HandleFunc("POST /api/validate_chirp", validateLength)
 	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
-	mux.HandleFunc("POST /api/chirps", db.createChirps)
+	mux.HandleFunc("POST /api/chirps", db.createChirps(db))
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
@@ -120,7 +120,7 @@ func censorRequestBody(req Request) Request {
 	return req
 }
 
-func (db *DB) createChirps(w http.ResponseWriter, r *http.Request) {
+func (db *DBConnection) createChirps(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	request, err := io.ReadAll(r.Body)
 	w.Header().Set("Content-Type", "application/json")
