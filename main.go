@@ -30,7 +30,7 @@ func main() {
 	mux.HandleFunc("/api/reset", apiConfig.handerReset)
 	mux.HandleFunc("POST /api/validate_chirp", validateLength)
 	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
-	mux.HandleFunc("POST /api/chirps", db.createChirps(db))
+	mux.HandleFunc("POST /api/chirps", db.createChirps)
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,

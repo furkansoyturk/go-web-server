@@ -44,21 +44,22 @@ func NewDB() (*DBConnection, error) {
 	var chirpMap DBStructure
 	json.Unmarshal(data, &chirpMap)
 	log.Printf("len of chirp list %v", len(chirpMap.Chirps))
-
+	// db.getDBStructure()
 	return &db, nil
 }
 
 // CreateChirp creates a new chirp and saves it to disk
 func (db *DBConnection) save(body string) (Chirp, error) {
 
+	db.index = len(db.getDBStructure().Chirps) + 1
 	chirp := Chirp{
-		Id:   3,
+		Id:   db.index,
 		Body: body,
 	}
 
 	m := make(map[int]Chirp)
-
-	m[chirp.Id] = chirp
+	m = db.getDBStructure().Chirps
+	m[db.index] = chirp
 
 	dbStructure := DBStructure{
 		Chirps: m,
@@ -71,7 +72,7 @@ func (db *DBConnection) save(body string) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DBConnection) getDBStructure(DBStructure, error) {
+func (db *DBConnection) getDBStructure() DBStructure {
 
 	file, err := os.OpenFile(db.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -84,9 +85,14 @@ func (db *DBConnection) getDBStructure(DBStructure, error) {
 		log.Panicf("failed reading data from file: %s", err)
 	}
 
-	var chirpMap DBStructure
-	json.Unmarshal(data, &chirpMap)
-	log.Printf("len of chirp list %v", len(chirpMap.Chirps))
+	var dbImg DBStructure
+	json.Unmarshal(data, &dbImg)
+	log.Println("DB")
+	log.Println(dbImg)
+	log.Printf("len of chirp list %v", len(dbImg.Chirps))
+	log.Printf("last id of created chirp %v", len(dbImg.Chirps))
+
+	return dbImg
 }
 
 //
