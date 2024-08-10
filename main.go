@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/furkansoyturk/go-web-server/internal/database"
 	"log"
 	"net/http"
+
+	"github.com/furkansoyturk/go-web-server/internal/database"
 )
 
 type apiConfig struct {
