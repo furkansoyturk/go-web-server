@@ -1,37 +1,41 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"io"
+	"github.com/furkansoyturk/go-web-server/internal/database"
 	"log"
 	"net/http"
-	"strings"
 )
 
-type Request struct {
-	Body string `json:"body"`
+type apiConfig struct {
+	fileserverHits int
+	DB             *database.DB
 }
 
 func main() {
-	apiConfig := ApiConfig{
-		FileServerHits: 0,
-	}
-
 	const filepathRoot = "."
 	const port = "8080"
 
-	db, _ := NewDB()
+	db, err := database.NewDB("database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	apiCfg := apiConfig{
+		fileserverHits: 0,
+		DB:             db,
+	}
+
 	mux := http.NewServeMux()
-	mux.Handle("/app/*", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	mux.Handle("/app/*", fsHandler)
+
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("GET /api/metrics", apiConfig.handlerMetrics)
-	mux.HandleFunc("/api/reset", apiConfig.handerReset)
-	mux.HandleFunc("POST /api/validate_chirp", validateLength)
-	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
-	mux.HandleFunc("POST /api/chirps", db.createChirps)
-	mux.HandleFunc("GET /api/chirps", db.getChirps)
+	mux.HandleFunc("GET /api/reset", apiCfg.handlerReset)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsRetrieve)
+
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
@@ -39,114 +43,4 @@ func main() {
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
-}
-
-func handlerReadiness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(http.StatusText(http.StatusOK)))
-}
-func validateLength(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	request, err := io.ReadAll(r.Body)
-	w.Header().Set("Content-Type", "application/json")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
-		return
-	}
-	defer r.Body.Close()
-	err = json.Unmarshal(request, &req)
-	req = censorRequestBody(req)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
-		return
-	}
-	if len(req.Body) <= 140 {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"cleaned_body": req.Body})
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Chirp is too long"})
-	}
-
-}
-
-func (apiConfig *ApiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %v", apiConfig.FileServerHits)))
-}
-
-func (apiConfig *ApiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		apiConfig.FileServerHits++
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (apiConfig *ApiConfig) adminMiddlewareMetricsInc(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	t, _ := template.ParseFiles("admin_index.html")
-	items := struct {
-		Value int
-	}{
-		Value: apiConfig.FileServerHits,
-	}
-	t.Execute(w, items)
-}
-func (apiConfig *ApiConfig) handerReset(w http.ResponseWriter, r *http.Request) {
-	apiConfig.FileServerHits = 0
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
-}
-
-func censorRequestBody(req Request) Request {
-	words := strings.Split(req.Body, " ")
-	cleanedReq := []string{}
-	for _, s := range words {
-		switch strings.ToLower(s) {
-		case "kerfuffle":
-			s = "****"
-		case "sharbert":
-			s = "****"
-		case "fornax":
-			s = "****"
-		}
-		cleanedReq = append(cleanedReq, s)
-	}
-	req.Body = strings.Join(cleanedReq, " ")
-	return req
-}
-
-func (db *DBConnection) createChirps(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	request, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
-	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("Content-Type", "application/json")
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
-	}
-
-	err = json.Unmarshal(request, &req)
-	db.save(req.Body)
-	var chirp = Chirp{Id: db.index, Body: req.Body}
-	json.NewEncoder(w).Encode(chirp)
-	return
-}
-
-func (db *DBConnection) getChirps(w http.ResponseWriter, r *http.Request) {
-	// var req Request
-	// request, err := io.ReadAll(r.Body)
-	// defer r.Body.Close()
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	var chirps = db.findAllChirps()
-	json.NewEncoder(w).Encode(chirps)
-	return
 }
