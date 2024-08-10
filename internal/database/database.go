@@ -47,7 +47,6 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	if err != nil {
 		return Chirp{}, err
 	}
-
 	return chirp, nil
 }
 
