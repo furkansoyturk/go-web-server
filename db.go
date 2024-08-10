@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -50,24 +51,32 @@ func NewDB() (*DBConnection, error) {
 
 // CreateChirp creates a new chirp and saves it to disk
 func (db *DBConnection) save(body string) (Chirp, error) {
-
 	db.index = len(db.getDBStructure().Chirps) + 1
+	fmt.Printf("current index of db -> %v", db.index)
+	fmt.Println("----------")
+
 	chirp := Chirp{
 		Id:   db.index,
 		Body: body,
 	}
+	var m = make(map[int]Chirp)
 
-	m := make(map[int]Chirp)
-	m = db.getDBStructure().Chirps
-	m[db.index] = chirp
+	fmt.Println("empty map initialized")
+	if db.index > 1 {
+		m = db.getDBStructure().Chirps
+		m[db.index] = chirp
 
+	} else {
+		fmt.Println("there is no key in map log-")
+		m[1] = chirp
+		fmt.Println("error while adding chrip to map")
+	}
 	dbStructure := DBStructure{
 		Chirps: m,
 	}
-
 	data, _ := json.Marshal(dbStructure)
-
 	os.WriteFile(db.path, []byte(data), 0644)
+
 	log.Println("writed successfully")
 	return chirp, nil
 }
