@@ -28,7 +28,7 @@ type DBStructure struct {
 func NewDB() (*DBConnection, error) {
 
 	db := DBConnection{
-		path: "db.json",
+		path: "database.json",
 	}
 
 	file, err := os.OpenFile(db.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -102,6 +102,14 @@ func (db *DBConnection) getDBStructure() DBStructure {
 	log.Printf("last id of created chirp %v", len(dbImg.Chirps))
 
 	return dbImg
+}
+
+func (db *DBConnection) findAllChirps() []Chirp {
+	var chirps []Chirp
+	for _, c := range db.getDBStructure().Chirps {
+		chirps = append(chirps, c)
+	}
+	return chirps
 }
 
 //

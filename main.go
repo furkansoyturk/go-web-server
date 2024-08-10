@@ -31,6 +31,7 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", validateLength)
 	mux.HandleFunc("/admin/metrics", apiConfig.adminMiddlewareMetricsInc)
 	mux.HandleFunc("POST /api/chirps", db.createChirps)
+	mux.HandleFunc("GET /api/chirps", db.getChirps)
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
@@ -123,13 +124,29 @@ func censorRequestBody(req Request) Request {
 func (db *DBConnection) createChirps(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	request, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Something went wrong"})
-		return
 	}
-	defer r.Body.Close()
+
 	err = json.Unmarshal(request, &req)
 	db.save(req.Body)
+	var chirp = Chirp{Id: db.index, Body: req.Body}
+	json.NewEncoder(w).Encode(chirp)
+	return
+}
+
+func (db *DBConnection) getChirps(w http.ResponseWriter, r *http.Request) {
+	// var req Request
+	// request, err := io.ReadAll(r.Body)
+	// defer r.Body.Close()
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	var chirps = db.findAllChirps()
+	json.NewEncoder(w).Encode(chirps)
+	return
 }
