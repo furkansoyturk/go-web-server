@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrNotExist = errors.New("resource does not exist")
@@ -25,8 +27,9 @@ type Chirp struct {
 }
 
 type User struct {
-	ID    int    `json:"id"`
-	EMAIL string `json:"email"`
+	ID       int    `json:"id"`
+	EMAIL    string `json:"email"`
+	PASSWORD string `json:"password"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -38,15 +41,17 @@ func NewDB(path string) (*DB, error) {
 	return db, err
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email string, pwd string) (User, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 	id := len(dbStructure.Users) + 1
+
 	user := User{
-		ID:    id,
-		EMAIL: email,
+		ID:       id,
+		EMAIL:    email,
+		PASSWORD: hashPassword(pwd),
 	}
 	dbStructure.Users[id] = user
 	err = db.writeDB(dbStructure)
@@ -151,4 +156,17 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 		return err
 	}
 	return nil
+}
+
+func hashPassword(password string) (hashedPassword string) {
+	pwd := []byte(password)
+	hashedPwd, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
+
+	hashedPassword = string(hashedPwd[:])
+
+	if err != nil {
+		return
+	}
+
+	return hashedPassword
 }

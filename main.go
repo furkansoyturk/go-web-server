@@ -32,7 +32,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerReset)
 	// auth
-	mux.HandleFunc("POST /api/login", apiCfg.HandlerLogin)
+	// mux.HandleFunc("POST /api/login", apiCfg.HandlerLogin)
 	// chirp
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsRetrieve)
