@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -39,6 +40,28 @@ func NewDB(path string) (*DB, error) {
 	}
 	err := db.ensureDB()
 	return db, err
+}
+
+func (db *DB) Login(email string, pwd string) (User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+	for _, user := range dbStructure.Users {
+		if user.EMAIL == email {
+			hashedPwd := user.PASSWORD
+			err := isAuthenticated(hashedPwd, pwd)
+			if err == nil {
+				return User{
+					ID:    user.ID,
+					EMAIL: user.EMAIL,
+				}, err
+			}
+			fmt.Println(err)
+		}
+	}
+	fmt.Println(err)
+	return User{}, err
 }
 
 func (db *DB) CreateUser(email string, pwd string) (User, error) {
@@ -169,4 +192,10 @@ func hashPassword(password string) (hashedPassword string) {
 	}
 
 	return hashedPassword
+}
+
+func isAuthenticated(hashedPwd string, requestPwd string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(requestPwd))
+	fmt.Println(err)
+	return err
 }
