@@ -3,7 +3,6 @@ package database
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 
@@ -47,6 +46,7 @@ func (db *DB) Login(email string, pwd string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
+
 	for _, user := range dbStructure.Users {
 		if user.EMAIL == email {
 			hashedPwd := user.PASSWORD
@@ -57,11 +57,9 @@ func (db *DB) Login(email string, pwd string) (User, error) {
 					EMAIL: user.EMAIL,
 				}, err
 			}
-			fmt.Println(err)
 		}
 	}
-	fmt.Println(err)
-	return User{}, err
+	return User{}, errors.New("unauthorized or not found")
 }
 
 func (db *DB) CreateUser(email string, pwd string) (User, error) {
@@ -195,7 +193,5 @@ func hashPassword(password string) (hashedPassword string) {
 }
 
 func isAuthenticated(hashedPwd string, requestPwd string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(requestPwd))
-	fmt.Println(err)
-	return err
+	return bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(requestPwd))
 }
