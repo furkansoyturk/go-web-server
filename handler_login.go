@@ -3,34 +3,43 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/furkansoyturk/go-web-server/internal/auth"
 )
 
-type LoginResponse struct {
-	ID    int    `json:"id"`
-	EMAIL string `json:"email"`
-}
-
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
-	type UserCreateRequest struct {
-		EMAIL    string `json:"email"`
-		PASSWORD string `json:"password"`
+	type parameters struct {
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
+	type response struct {
+		User
+	}
+
 	decoder := json.NewDecoder(r.Body)
-	params := UserCreateRequest{}
+	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
 
-	user, err := cfg.DB.Login(params.EMAIL, params.PASSWORD)
+	user, err := cfg.DB.GetUserByEmail(params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't login")
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, LoginResponse{
-		ID:    user.ID,
-		EMAIL: user.EMAIL,
+	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid password")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:    user.ID,
+			Email: user.Email,
+		},
 	})
 }
