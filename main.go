@@ -1,14 +1,18 @@
 package main
 
 import (
-	"github.com/furkansoyturk/go-web-server/internal/database"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/furkansoyturk/go-web-server/internal/database"
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
-	fileserverHits int
+	fileServerHits int
 	DB             *database.DB
+	jwtSecret      string
 }
 
 func main() {
@@ -20,9 +24,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	secretKey := os.Getenv("JWT_SECRET")
+
+	log.Printf("secret -> %v", secretKey)
+
 	apiCfg := apiConfig{
-		fileserverHits: 0,
+		fileServerHits: 0,
 		DB:             db,
+		jwtSecret:      secretKey,
 	}
 
 	mux := http.NewServeMux()
