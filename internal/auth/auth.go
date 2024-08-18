@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"fmt"
+	"go/types"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -30,8 +30,6 @@ func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, error
 		ttl = 86400 * time.Second
 	}
 
-	fmt.Printf("input ttl %v\n", ttl)
-
 	JWTToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.RegisteredClaims{
 			Issuer:    "chirpy",
@@ -46,4 +44,8 @@ func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, error
 	}
 
 	return signedJWT, nil
+}
+
+func ReadFrom(token string) (userID string) {
+	return "1"
 }
