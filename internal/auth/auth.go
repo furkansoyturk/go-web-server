@@ -1,7 +1,8 @@
 package auth
 
 import (
-	"go/types"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -47,5 +48,14 @@ func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, error
 }
 
 func ReadFrom(token string) (userID string) {
-	return "1"
+	tkn, err := jwt.ParseWithClaims(token, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+		secretKey := os.Getenv("JWT_SECRET")
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		fmt.Println(err)
+		return err.Error()
+	}
+	sbj, _ := tkn.Claims.GetSubject()
+	return sbj
 }

@@ -4,11 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/furkansoyturk/go-web-server/internal/auth"
 	"github.com/furkansoyturk/go-web-server/internal/database"
 )
+
+type UsersUpdate struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}
 
 func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
@@ -16,7 +22,7 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		Email    string `json:"email"`
 	}
 	type response struct {
-		User
+		UsersUpdate
 	}
 	token := r.Header.Get("Authorization")
 
@@ -47,7 +53,13 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := cfg.DB.CreateUser(params.Email, hashedPassword)
+	id, err := strconv.Atoi(auth.ReadFrom(token))
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	usr, err := cfg.DB.UpdateUser(params.Email, hashedPassword, id)
 	if err != nil {
 		if errors.Is(err, database.ErrAlreadyExists) {
 			respondWithError(w, http.StatusConflict, "User already exists")
@@ -58,10 +70,10 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, response{
-		User: User{
-			ID:    user.ID,
-			Email: user.Email,
+	respondWithJSON(w, http.StatusOK, response{
+		UsersUpdate: UsersUpdate{
+			ID:    usr.ID,
+			Email: usr.Email,
 		},
 	})
 }
