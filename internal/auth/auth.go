@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"time"
@@ -23,7 +25,7 @@ func CheckPasswordHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, error) {
+func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, string, error) {
 
 	ttl := time.Duration(expiredInSecond) * time.Second
 
@@ -41,10 +43,10 @@ func CreateJWT(secret []byte, userId string, expiredInSecond int) (string, error
 	)
 	signedJWT, err := JWTToken.SignedString(secret)
 	if err != nil {
-		return err.Error(), err
+		return err.Error(), "-", err
 	}
 
-	return signedJWT, nil
+	return signedJWT, createRefreshToken(), nil
 }
 
 func ReadFrom(token string) (userID string) {
@@ -59,3 +61,17 @@ func ReadFrom(token string) (userID string) {
 	sbj, _ := tkn.Claims.GetSubject()
 	return sbj
 }
+
+func createRefreshToken() (refreshToken string) {
+	c := 32
+	b := make([]byte, c)
+	_, err := rand.Read(b)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	// The slice should now contain random bytes instead of only zeroes.
+	return hex.EncodeToString(b)
+}
+
+//TODO: refresh token validation & ttl should be impl.

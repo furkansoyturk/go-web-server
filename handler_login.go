@@ -8,6 +8,13 @@ import (
 	"github.com/furkansoyturk/go-web-server/internal/auth"
 )
 
+type loginResponse struct {
+	ID           int    `json:"id"`
+	Email        string `json:"email"`
+	JWTToken     string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Password        string `json:"password"`
@@ -15,7 +22,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		ExpiresInSecond int    `json:"expires_in_seconds"`
 	}
 	type response struct {
-		User
+		loginResponse
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -38,7 +45,8 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.CreateJWT([]byte(cfg.jwtSecret), strconv.Itoa(user.ID), params.ExpiresInSecond)
+	token, refreshToken, err := auth.CreateJWT([]byte(cfg.jwtSecret), strconv.Itoa(user.ID), params.ExpiresInSecond)
+	user, err = cfg.DB.SaveRefreshToken(user.ID, refreshToken)
 
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
@@ -46,10 +54,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, response{
-		User: User{
-			ID:       user.ID,
-			Email:    user.Email,
-			JWTToken: token,
+		loginResponse: loginResponse{
+			ID:           user.ID,
+			Email:        user.Email,
+			JWTToken:     token,
+			RefreshToken: user.RefreshToken,
 		},
 	})
 }
