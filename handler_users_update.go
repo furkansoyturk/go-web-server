@@ -2,19 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/furkansoyturk/go-web-server/internal/auth"
-	"github.com/furkansoyturk/go-web-server/internal/database"
 )
-
-type UsersUpdate struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
-}
 
 func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
@@ -22,26 +14,23 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		Email    string `json:"email"`
 	}
 	type response struct {
-		UsersUpdate
+		User
 	}
-	token := r.Header.Get("Authorization")
 
-	if len(token) > 0 {
-		tokenArr := strings.Split(token, " ")
-		if tokenArr[0] == "Bearer" {
-			token = tokenArr[1]
-		} else {
-			respondWithError(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-	} else {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
+		return
+	}
+	subject, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
 		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
@@ -53,27 +42,22 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	id, err := strconv.Atoi(auth.ReadFrom(token))
+	userIDInt, err := strconv.Atoi(subject)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		respondWithError(w, http.StatusInternalServerError, "Couldn't parse user ID")
 		return
 	}
 
-	usr, err := cfg.DB.UpdateUser(params.Email, hashedPassword, id)
+	user, err := cfg.DB.UpdateUser(userIDInt, params.Email, hashedPassword)
 	if err != nil {
-		if errors.Is(err, database.ErrAlreadyExists) {
-			respondWithError(w, http.StatusConflict, "User already exists")
-			return
-		}
-
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
+		respondWithError(w, http.StatusInternalServerError, "Couldn't update user")
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, response{
-		UsersUpdate: UsersUpdate{
-			ID:    usr.ID,
-			Email: usr.Email,
+		User: User{
+			ID:    user.ID,
+			Email: user.Email,
 		},
 	})
 }

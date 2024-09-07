@@ -17,12 +17,12 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 </body>
 
 </html>
-	`, cfg.fileServerHits)))
+	`, cfg.fileserverHits)))
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileServerHits++
+		cfg.fileserverHits++
 		next.ServeHTTP(w, r)
 	})
 }

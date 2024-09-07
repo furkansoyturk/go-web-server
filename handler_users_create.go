@@ -13,7 +13,6 @@ type User struct {
 	ID       int    `json:"id"`
 	Email    string `json:"email"`
 	Password string `json:"-"`
-	JWTToken string `json:"token"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
