@@ -1,20 +1,25 @@
 package database
 
+import "strconv"
+
 type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
+	ID       int    `json:"id"`
+	Body     string `json:"body"`
+	AuthorID int    `json:"author_id"`
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body, authorId string) (Chirp, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err
 	}
 
 	id := len(dbStructure.Chirps) + 1
+	author, _ := strconv.Atoi(authorId)
 	chirp := Chirp{
-		ID:   id,
-		Body: body,
+		ID:       id,
+		Body:     body,
+		AuthorID: author,
 	}
 	dbStructure.Chirps[id] = chirp
 
