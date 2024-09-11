@@ -13,6 +13,7 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	authorIdParam := r.URL.Query().Get("author_id")
+	sortingParam := r.URL.Query().Get("sort")
 	authorId, _ := strconv.Atoi(authorIdParam)
 
 	queriedChirps := []Chirp{}
@@ -30,9 +31,15 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 			respondWithError(w, http.StatusNotFound, "Author not found")
 		}
 
-		sort.Slice(queriedChirps, func(i, j int) bool {
-			return queriedChirps[i].ID < queriedChirps[j].ID
-		})
+		if sortingParam == "desc" {
+			sort.Slice(queriedChirps, func(i, j int) bool {
+				return queriedChirps[i].ID > queriedChirps[j].ID
+			})
+		} else {
+			sort.Slice(queriedChirps, func(i, j int) bool {
+				return queriedChirps[i].ID < queriedChirps[j].ID
+			})
+		}
 
 		respondWithJSON(w, http.StatusOK, queriedChirps)
 		return
@@ -46,9 +53,15 @@ func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Reque
 			})
 		}
 
-		sort.Slice(chirps, func(i, j int) bool {
-			return chirps[i].ID < chirps[j].ID
-		})
+		if sortingParam == "desc" {
+			sort.Slice(chirps, func(i, j int) bool {
+				return chirps[i].ID > chirps[j].ID
+			})
+		} else {
+			sort.Slice(chirps, func(i, j int) bool {
+				return chirps[i].ID < chirps[j].ID
+			})
+		}
 
 		respondWithJSON(w, http.StatusOK, chirps)
 	}
