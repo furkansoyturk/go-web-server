@@ -3,62 +3,37 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
-
-	"github.com/furkansoyturk/go-web-server/internal/auth"
 )
+
+const userUpgradedEvent = "user.upgraded"
 
 func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
 	// TODO: fix webhooks.
+	type Data struct {
+		UserID int `json:"user_id"`
+	}
 	type parameters struct {
-		Password string `json:"password"`
-		Email    string `json:"email"`
-	}
-	type response struct {
-		User
-	}
-
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
-		return
-	}
-	subject, err := auth.ValidateJWT(token, cfg.jwtSecret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
-		return
+		Event string `json:"event"`
+		Data  `json:"data"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err = decoder.Decode(&params)
+	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
 
-	hashedPassword, err := auth.HashPassword(params.Password)
+	user, err := cfg.DB.GetUser(params.Data.UserID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password")
+		respondWithError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
-	userIDInt, err := strconv.Atoi(subject)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't parse user ID")
-		return
+	if params.Event == userUpgradedEvent {
+		cfg.DB.UpdateUserMembership(user.ID, true)
 	}
 
-	user, err := cfg.DB.UpdateUser(userIDInt, params.Email, hashedPassword)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't update user")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, response{
-		User: User{
-			ID:    user.ID,
-			Email: user.Email,
-		},
-	})
+	respondWithJSON(w, http.StatusNoContent, "")
 }
