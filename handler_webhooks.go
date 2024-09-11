@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/furkansoyturk/go-web-server/internal/auth"
 )
 
 const userUpgradedEvent = "user.upgraded"
@@ -17,9 +19,15 @@ func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
 		Data  `json:"data"`
 	}
 
+	apiKey, err := auth.GetApiKey(r.Header)
+	if err != nil || apiKey != cfg.webhookSecret {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return

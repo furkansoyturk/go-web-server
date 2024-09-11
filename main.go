@@ -14,6 +14,7 @@ type apiConfig struct {
 	fileserverHits int
 	DB             *database.DB
 	jwtSecret      string
+	webhookSecret  string
 }
 
 func main() {
@@ -25,6 +26,11 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
+	webhookSecret := os.Getenv("WEBHOOK_SECRET")
+	if webhookSecret == "" {
+		log.Fatal("WEBHOOK_SECRET environment variable is not set")
 	}
 
 	db, err := database.NewDB("database.json")
@@ -45,6 +51,7 @@ func main() {
 		fileserverHits: 0,
 		DB:             db,
 		jwtSecret:      jwtSecret,
+		webhookSecret:  webhookSecret,
 	}
 
 	mux := http.NewServeMux()
